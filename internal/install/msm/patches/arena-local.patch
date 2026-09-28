@@ -1,0 +1,160 @@
+diff -ruN -x '.git*' -x .vscode msm-up/addons/SourcemodHelper/packages/counterstrikesharp.sh msm-new/addons/SourcemodHelper/packages/counterstrikesharp.sh
+--- a/addons/SourcemodHelper/packages/counterstrikesharp.sh	2026-07-15 02:10:17.000000000 +0800
++++ b/addons/SourcemodHelper/packages/counterstrikesharp.sh	2026-09-22 00:14:34.017414992 +0800
+@@ -3,6 +3,6 @@
+ 
+ SourcemodPackage.counterstrikesharp::download () {
+ 	SourcemodHelper::unpackZip \
+-		https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.371/counterstrikesharp-with-runtime-linux-1.0.371.zip \
+-		447f699d574348c9ffafc3d54a88363f29cd7ecba3d8e52adcccd9201812d01d
++		https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.374/counterstrikesharp-with-runtime-linux-1.0.374.zip \
++		22a24aa482e226ad0dcdc72cec03e1927d267eb5a1566094e98809a06dcc6792
+ }
+diff -ruN -x '.git*' -x .vscode msm-up/addons/SourcemodHelper/packages/metamod.sh msm-new/addons/SourcemodHelper/packages/metamod.sh
+--- a/addons/SourcemodHelper/packages/metamod.sh	2026-07-15 02:10:17.000000000 +0800
++++ b/addons/SourcemodHelper/packages/metamod.sh	2026-09-22 00:14:34.013415021 +0800
+@@ -5,6 +5,6 @@
+ 	# NOTE: CS2 (Source 2) needs the 2.x branch (has metamod.2.cs2.so). The legacy
+ 	# 1.1x branch is for Source 1 games (CS:GO, TF2, ...) and does NOT support CS2 at all.
+ 	SourcemodHelper::unpackTar \
+-		https://github.com/alliedmodders/metamod-source/releases/download/2.0.0.1406/mmsource-2.0.0-git1406-linux.tar.gz \
++		https://github.com/alliedmodders/metamod-source/releases/download/2.0.0.1468/mmsource-2.0.0-git1468-linux.tar.gz \
+ 		18c9231b8b7de14add24b0fcc5b3e6d27b8d894a9182cb04cfb6c2770573f514
+ }
+diff -ruN -x '.git*' -x .vscode msm-up/cs2/app/cfg/gotv.conf msm-new/cs2/app/cfg/gotv.conf
+--- a/cs2/app/cfg/gotv.conf	2026-07-15 02:10:17.000000000 +0800
++++ b/cs2/app/cfg/gotv.conf	2026-09-22 00:14:34.085414506 +0800
+@@ -32,7 +32,7 @@
+ 
+ #~~~~ GOTV Port: Viewers can watch from the console with `connect ip_address:tv_port
+ #     By default, this is the main game server port + 5
+-TV_PORT=$(( PORT + 5 ))
++TV_PORT=$(( PORT + 100 ))
+ 
+ #~~~~ GOTV Spectator password. If set, viewers need to enter `password tv_pass` before connecting
+ # TV_PASS="1234"
+diff -ruN -x '.git*' -x .vscode msm-up/cs2/app/functions/instance.sh msm-new/cs2/app/functions/instance.sh
+--- a/cs2/app/functions/instance.sh	2026-07-15 02:10:17.000000000 +0800
++++ b/cs2/app/functions/instance.sh	2026-09-22 00:14:34.069414620 +0800
+@@ -16,35 +16,39 @@
+ App::defaultAddons () { echo "SourcemodHelper SteamAPIHelper AddonTemplate"; }
+ 
+ 
+-# Auto-assigns a PORT that doesn't collide with any existing instance's PORT,
+-# by scanning every other instance's actual resolved port and picking
+-# max+100. GOTV's TV_PORT is always PORT+5 (see cs2/app/cfg/gotv.conf), so a
+-# gap of 100 leaves plenty of room for it too. Appends a strong PORT=
+-# override at the end of the instance's freshly created server.conf, which
+-# wins over whatever default/copied value came before it in the file.
++# Auto-assigns a PORT that doesn't collide with any existing instance's PORT
++# or GOTV port, by scanning every other instance's actual resolved game port
++# (server.conf) and GOTV port (gotv.conf's TV_PORT, which is PORT+100) and
++# picking max+1. Appends a strong PORT= override at the end of the instance's
++# freshly created server.conf, which wins over whatever default/copied value
++# came before it in the file.
+ App::assignInstancePort () {
+ 	local conf="$INSTCFGDIR/server.conf"
+ 	[[ -f $conf ]] || return 0
+ 
+ 	local maxport=0
+-	local inst p
++	local inst sc pg pv
+ 	for inst in $(Core.Instance::listInstances); do
+ 		[[ $inst == $INSTANCE ]] && continue
+-		p="$(
++		sc="$(
+ 			INSTANCE=$inst
+ 			Core.Instance::select
+-			unset PORT
++			unset PORT TV_PORT
+ 			.file "$INSTCFGDIR/server.conf" 2>/dev/null
+ 			applyDefaults
+-			echo "$PORT"
++			.file "$INSTCFGDIR/gotv.conf" 2>/dev/null
++			echo "$PORT $TV_PORT"
+ 		)"
+-		[[ $p =~ ^[0-9]+$ ]] && (( p > maxport )) && maxport=$p
++		pg=${sc%% *}
++		pv=${sc##* }
++		[[ $pg =~ ^[0-9]+$ ]] && (( pg > maxport )) && maxport=$pg
++		[[ $pv =~ ^[0-9]+$ ]] && (( pv > maxport )) && maxport=$pv
+ 	done
+ 
+ 	# Deliberately not `local` - App::allowFirewallPorts (called separately,
+ 	# since a clone reassigns the port after this runs) reads it back.
+ 	ASSIGNED_PORT=27015
+-	(( maxport > 0 )) && ASSIGNED_PORT=$(( maxport + 100 ))
++	(( maxport > 0 )) && ASSIGNED_PORT=$(( maxport + 1 ))
+ 
+ 	{
+ 		echo ""
+@@ -52,19 +56,26 @@
+ 		echo "PORT=\"$ASSIGNED_PORT\""
+ 	} >> "$conf"
+ 
+-	info <<< "Assigned **PORT=$ASSIGNED_PORT** to this instance (GOTV follows automatically at PORT+5)."
++	info <<< "Assigned **PORT=$ASSIGNED_PORT** to this instance (GOTV follows automatically at PORT=100)."
+ }
+ 
+ 
+-# Opens the instance's game port and GOTV port (game port + 5) in ufw, with
+-# both TCP and UDP allowed (`ufw allow <port>` without a protocol suffix
++# Opens the instance's game port and GOTV port (as set in gotv.conf) in ufw,
++# with both TCP and UDP allowed (`ufw allow <port>` without a protocol suffix
+ # covers both). No-op if ufw isn't installed. Asks for confirmation first,
+ # since this changes firewall rules.
+ App::allowFirewallPorts () {
+ 	[[ $ASSIGNED_PORT ]] || return 0
+ 	command -v ufw >/dev/null || return 0
+ 
+-	local tvport=$(( ASSIGNED_PORT + 5 ))
++	local tvport="$(
++		unset PORT TV_PORT
++		.file "$INSTCFGDIR/server.conf" 2>/dev/null
++		applyDefaults
++		.file "$INSTCFGDIR/gotv.conf" 2>/dev/null
++		echo "$TV_PORT"
++	)"
++	[[ $tvport =~ ^[0-9]+$ ]] || tvport=$(( ASSIGNED_PORT + 5 ))
+ 
+ 	out <<-EOF
+ 
+diff -ruN -x '.git*' -x .vscode msm-up/cs2/app/functions/server.sh msm-new/cs2/app/functions/server.sh
+--- a/cs2/app/functions/server.sh	2026-07-15 02:10:17.000000000 +0800
++++ b/cs2/app/functions/server.sh	2026-09-22 00:14:34.077414563 +0800
+@@ -69,6 +69,8 @@
+ 	LAUNCH_ARGS=(
+ 		-dedicated
+ 		-console
++		-insecure
++		#-nomaster
+ 		$USE_RCON
+ 		${TICKRATE:+-tickrate $TICKRATE} # Likely has no effect with CS2 tickless
+ 		-ip $IP
+diff -ruN -x '.git*' -x .vscode msm-up/program/Core/BaseInstallation/functions.sh msm-new/program/Core/BaseInstallation/functions.sh
+--- a/program/Core/BaseInstallation/functions.sh	2026-07-15 02:10:17.000000000 +0800
++++ b/program/Core/BaseInstallation/functions.sh	2026-09-22 00:14:33.957415421 +0800
+@@ -12,7 +12,10 @@
+ Core.BaseInstallation::registerCommands () {
+ 	simpleCommand "Core.BaseInstallation::requestUpdate" update install
+ 	simpleCommand "Core.BaseInstallation::requestRepair" repair validate
+-	oneArgCommand "Core.BaseInstallation::cloneFrom" clone
++	# Only register the remote (ssh) clone variant when no instance context
++	# (@name) is active - instance-level `clone <newname>` is the more useful
++	# one and must stay registered (Instance/functions.sh).
++	[[ $INSTANCE ]] || oneArgCommand "Core.BaseInstallation::cloneFrom" clone
+ }
+ 
+ 
+diff -ruN -x '.git*' -x .vscode msm-up/program/Core/Instance/functions.sh msm-new/program/Core/Instance/functions.sh
+--- a/program/Core/Instance/functions.sh	2026-07-15 02:10:17.000000000 +0800
++++ b/program/Core/Instance/functions.sh	2026-09-22 00:14:33.965415364 +0800
+@@ -273,7 +273,7 @@
+ 	echo $APP > "msm.d/app"
+ 
+ 	# Auto-assign a port that doesn't collide with any existing instance
+-	# (GOTV's port follows automatically, it's always PORT+5 - see cs2/app/cfg/gotv.conf)
++	# (GOTV.s port follows automatically via gotv.conf, currently PORT+100 - see cs2/app/cfg/gotv.conf)
+ 	try App::assignInstancePort
+ 
+ 	# Skipped when called from ::cloneInstance, which reassigns the port

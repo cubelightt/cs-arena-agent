@@ -1,0 +1,33 @@
+[Unit]
+# CS2 Arena 桥 v2(`cs`)systemd user unit —— 主机重启后自动恢复
+#
+# 安装(user 级,不需要 root):
+#   mkdir -p ~/.config/systemd/user
+#   cp cs-agent.service ~/.config/systemd/user/
+#   # 若二进制/配置不在默认路径,改下面的 ExecStart
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now cs-agent
+#   loginctl enable-linger "$USER"        # 用户未登录也能常驻(必须)
+#
+# 查看:
+#   systemctl --user status cs-agent
+#   journalctl --user -u cs-agent -f
+#   ~/data/bridge/cs status               # 实例/后端连接/磁盘一览
+#
+# 说明:ExecStart 里的 %h 展开为该用户 HOME;配置里 token/backend_ws 由 cs install 或手工生成。
+Description=CS2 Arena bridge agent (cs)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/data/bridge/cs agent --config %h/data/bridge/config.yaml
+Restart=always
+RestartSec=3
+# 桥自己处理 SIGTERM(干净退出、不杀在跑的 msm 子进程)
+KillSignal=SIGTERM
+TimeoutStopSec=20
+# 日志走 journald;也可改 StandardOutput=append:%h/data/bridge/cs-agent.log
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,17 @@
+#! /bin/bash
+## vim: noet:sw=0:sts=0:ts=4
+
+# (C) 2016-2017 Maximilian Wende <dasisdormax@mailbox.org>
+#
+# This file is licensed under the Apache License 2.0. For more information,
+# see the LICENSE file or visit: http://www.apache.org/licenses/LICENSE-2.0
+
+
+
+
+# The human-readable APP names
+APP_SHORT="CS2"
+APP_LONG="Counter-Strike 2"
+
+# SERVER_EXEC: The executable file of the server, within INSTANCE_DIR
+SERVER_EXEC="game/bin/linuxsteamrt64/cs2"

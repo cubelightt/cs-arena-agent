@@ -1,0 +1,7 @@
+# Replace every example value before starting the agent. Keep this file private when configured.
+token: replace-with-platform-bridge-token
+backend_ws: wss://<platform-host>/api/agent
+msm_dir: /home/<game-user>/cs2-multiserver
+# msm: /home/<game-user>/cs2-multiserver/cs2-server
+demo_dir: /home/<game-user>/arena-data/demos
+archive_dir: /home/<game-user>/arena-data

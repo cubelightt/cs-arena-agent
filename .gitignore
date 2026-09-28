@@ -1,0 +1,18 @@
+/cs
+*.log
+*.db
+*.db-wal
+*.db-shm
+.env*
+!.env.example
+/config.yaml
+/config.json
+/arena-data/
+/demos/
+/coverage/
+
+# Local model instructions
+AGENTS.md
+CLAUDE.md
+.codex/
+.claude/
